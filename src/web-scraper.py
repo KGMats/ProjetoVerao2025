@@ -18,32 +18,51 @@ soup = BeautifulSoup(page.text, 'html.parser')
 #cardapio = soup.find_all('div', class_ = "menu-item")
 #print(cardapio)
 
-week = []
+week = [] #RETORNO (ESSE CODIGO DEVE SER UMA FUNCAO) DEVE SER UMA LISTA DE DICIONARIOS EM QUE CADA DICT = 1 DIA
 
-#loop para cada dia da semana
+#loop para cada dia da semana!!!!!!!!!!!! (NAO IMPLEMENTADO)
 
-dia = {}
+dia = {} #O PROGRAMA ABAIXO JA IMPLEMENTA CORRETAMENTE O TRATAMENTO DO INPUT PARA 1 DIA INTEIRO (ALMOCO E JANTA) FAZER ISSO APRA A SEMANA TODA DE VEZ
 
-#loop para cada refeicao => instancias no dicionario
-
+#[0] = str com o nome da proteina 
 proteina = soup.find_all('div', class_ = "menu-item-name")
 #print(f"almoco = {proteina[0]} e jantar = {proteina[2]}")
-aux = 0
+tmp = 0
 for p in proteina:
-    if (aux == 0 or aux == 2):
-        print(p.text.strip())
-    aux += 1
+    if (tmp == 0):
+        dia['lunch'] = f'{p.text.strip()}'
+    elif (tmp == 2):
+        proteina_janta = f'{p.text.strip()}'
+    tmp += 1
 
+#[0] = padroes ('arroz e feijao'), [1] = especial, [2] = salada, [3] = sobremesa (output especial), [4] = refresco, [5] e [6] = obs (tirar?)
 acompanhamentos = soup.find_all('div', class_ = "menu-item-description")
 aux = 0
 for list in acompanhamentos:
-    teste = []
     if (aux == 1 or aux == 3):
         aux += 1
         continue
+    if (aux == 0):
+        prefix = 'l'
+    else: #aux == 2
+        prefix = 'd'
+        dia['dinner'] = proteina_janta
+    index = 0 #indice para controle do tipo de acompanhamento
     for a in list:
         if (a.text.strip() != ''):
-            teste.append(a.text.strip())
-    print(teste)
+            if (index == 0): #arroz e feijao
+                dia[f'{prefix}standart'] = f'{a.text.strip()}'
+            elif (index == 1):
+                dia[f'{prefix}special'] = f'{a.text.strip()}'
+            elif (index == 2):
+                dia[f'{prefix}salad'] = f'{a.text.strip()}'
+            elif (index == 3):
+                dia[f'{prefix}dessert'] = f'{a.text.strip()}'
+            elif (index == 4):
+                dia[f'{prefix}drink'] = f'{a.text.strip()}'
+            else:
+                ...
+                #EH PARA CONSIDERAR AS OBSERVACOES?
+            index += 1
     aux += 1
-
+print(dia)
