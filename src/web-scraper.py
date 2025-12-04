@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup #bibioteca para filtrar o texto do site
 import requests #biblioteca para pegar o texto do site
+import json
+import os
 
 #link do site a ser utilizado
 url = 'https://sistemas.prefeitura.unicamp.br/apps/cardapio/index.php' # ...index.php?d=2025-12-01
@@ -73,10 +75,47 @@ def get_week_menu(dias):
                     elif (index == 2):
                         dic['salada'] = output
                     elif (index == 3):
-                        dic['sobremesa'] = output #dicionario de restaurante:sobremesa {RU: "xxxx", RA: "xxxx", HC: "xxxx", RS"xxxx",}
+                        sobremesas = {}
+                        first_half = ''
+                        second_half = ''
+                        fh = True
+                        for w in output:
+                            if (w == '\n'):
+                                break
+                            if (w == '|'):
+                                fh = False
+                                continue
+                            if (fh):
+                                if (w != ' '):
+                                    first_half += w
+                            else:
+                                if (w != ' '):
+                                    second_half += w
+                        sobremesa_RU = ''
+                        for l in second_half:
+                            if (l == '('):
+                                break
+                            sobremesa_RU += l
+                        sobremesas['RU'] = sobremesa_RU
+                        sobremesa_demais = ''
+                        for k in first_half:
+                            if (k == '('):
+                                break
+                            sobremesa_demais += k
+                        sobremesas['RA'] = sobremesas['HC'] = sobremesas['RS'] = sobremesa_demais
+                        if (second_half == ''):
+                            sobremesas['RU'] = sobremesas['RA']
+                        dic['sobremesa'] = sobremesas
                     elif (index == 4):
                         dic['suco'] = output
                     index += 1
             aux += 1
         week[f'{dia_da_semana}'] = dia
     return week
+
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+diretorio_raiz = os.path.dirname(diretorio_atual)
+caminho_arquivo = os.path.join(diretorio_raiz, 'weekly-data.json')
+
+with open(caminho_arquivo, 'w', encoding='utf-8') as f:
+    json.dump(get_week_menu(dias), f, indent = 4, ensure_ascii = False)
