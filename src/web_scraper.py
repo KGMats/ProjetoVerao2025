@@ -1,9 +1,32 @@
 from bs4 import BeautifulSoup #bibioteca para filtrar o texto do site
+from config import config
 import requests #biblioteca para pegar o texto do site
 import json
 import os
-from config import config
+import re
 
+'''Trata os casos de input no estilo: BANANA (RA/RS/HS) | LARANJA (RU), retorna l=BANANA e r=LARANJA'''
+def splitter(sobremesa_str):
+    uma_sobremesa = False
+    
+    if "|" not in sobremesa_str:
+        uma_sobremesa = True
+
+    restaurantes = ["RA", "RS", "HC", "RU"]
+    sobremesas = sobremesa_str.split("|")
+
+    if len(sobremesas) == 1 or uma_sobremesa == True:
+        # So tem uma sobremesa pra todo mundo
+        s = {r:sobremesas[0] for r in restaurantes}
+        return s
+    
+    s = {r:"" for r in restaurantes}
+    # Tem mais de uma ebaa
+    for sob in sobremesas:
+        for r in restaurantes:
+            if r in sob.split("(")[1]:
+                s[r] = sob.split("(")[0].strip() # Tirando os restaurantes da string
+    return s #retorno do tipo: {'RA': 'BANANA', 'RS': 'BANANA', 'HC': 'GOIABADA', 'RU': 'LARANJA'}
 
 #link do site a ser utilizado
 # ...index.php?d=2025-12-01
@@ -30,7 +53,7 @@ for link in dias_da_semana:
     if href:
         dias[f'{dia_nome}'] = href
 
-'''retorna um dicionario de dicionarios de dias (Segunda, Terca, Quarta...) de dicionarios de almoco e janta (proteina:, suco:...)'''
+'''retorna um dicionario de dicionarios de dias (Segunda, Terca, Quarta...) de dicionarios de almoco e janta (proteina:, suco:...) de dicionarios de restaurantes (RA, RS, HC e RU) com o menu do dia'''
 def get_week_menu(dias):
     week = {}
     for key, value in dias.items():
@@ -45,14 +68,21 @@ def get_week_menu(dias):
         proteina = soup.find_all('div', class_ = "menu-item-name")
         tmp = 0
         for p in proteina:
+            p = p.text.strip()
             if (tmp == 0):
-                lunch = {}
+                HC = RS = RA = RU = {}
+                lunch = {'HC':HC,'RS':RS,'RA':RA,'RU':RU}
                 dia['almoco'] = lunch
-                lunch['proteina'] = f'{p.text.strip()}'
+                # lunch['proteina'] = f'{p.text.strip()}'
+                for restaurante,proteina in splitter(p).items():
+                    lunch[f'{restaurante}']['proteina'] = proteina
             elif (tmp == 2):
-                dinner = {}
+                HC = RS = RA = RU = {}
+                dinner = {'HC':HC,'RS':RS,'RA':RA,'RU':RU}
                 dia['jantar'] = dinner
-                dinner['proteina'] = f'{p.text.strip()}'
+                # dinner['proteina'] = f'{p.text.strip()}'
+                for restaurante,proteina in splitter(p).items():
+                    lunch[f'{restaurante}']['proteina'] = proteina
             tmp += 1
 
         #[0] = padroes ('arroz e feijao'), [1] = especial, [2] = salada, [3] = sobremesa (output especial), [4] = refresco
@@ -71,50 +101,26 @@ def get_week_menu(dias):
                 if (a.text.strip() != ''):
                     output = f'{a.text.strip()}'
                     if (index == 0):
-                        dic['carboidrato'] = output
+                        for restaurante, carb in splitter(output).items():
+                            dic[f'{restaurante}']['carboidrato'] = carb
                     elif (index == 1):
-                        dic['guarnicao'] = output
+                        for restaurante, guar in splitter(output).items():
+                            dic[f'{restaurante}']['guarnicao'] = guar
                     elif (index == 2):
-                        dic['salada'] = output
+                        for restaurante, salad in splitter(output).items():
+                            dic[f'{restaurante}']['salada'] = salad
                     elif (index == 3):
-                        sobremesas = {}
-                        first_half = ''
-                        second_half = ''
-                        fh = True
-                        for w in output:
-                            if (w == '\n'):
-                                break
-                            if (w == '|'):
-                                fh = False
-                                continue
-                            if (fh):
-                                if (w != ' '):
-                                    first_half += w
-                            else:
-                                if (w != ' '):
-                                    second_half += w
-                        sobremesa_RU = ''
-                        for l in second_half:
-                            if (l == '('):
-                                break
-                            sobremesa_RU += l
-                        sobremesas['RU'] = sobremesa_RU
-                        sobremesa_demais = ''
-                        for k in first_half:
-                            if (k == '('):
-                                break
-                            sobremesa_demais += k
-                        sobremesas['RA'] = sobremesas['HC'] = sobremesas['RS'] = sobremesa_demais
-                        if (second_half == ''):
-                            sobremesas['RU'] = sobremesas['RA']
-                        dic['sobremesa'] = sobremesas
+                        for restaurante, sobremesa in splitter(output).items():
+                            dic[f'{restaurante}']['sobremesa'] = sobremesa
                     elif (index == 4):
-                        dic['suco'] = output
+                        for restaurante, suco in splitter(output).items():
+                            dic[f'{restaurante}']['suco'] = suco
                     index += 1
             aux += 1
         week[f'{value[3:]}'] = dia
     return week
 
+'''funcao que chama a funcao de web_scrapping e salva seu output em "weekly'''
 def save_weekly_data():
     diretorio_atual = os.path.dirname(os.path.abspath(__file__))
     diretorio_raiz = os.path.dirname(diretorio_atual)
