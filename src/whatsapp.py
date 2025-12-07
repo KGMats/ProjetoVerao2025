@@ -43,10 +43,11 @@ with open("../weekly-quotes.json", "r", encoding= "utf8") as f: #abrir arquivo p
 with open("../weekly-data.json", "r", encoding= "utf8") as f:
     ref = json.load(f)
 
-enviarRef(f"""{ref[diAtual]["almoco"]}""", 0)
-
+enviarRef(f"""{ref[diAtual]["almoco"]}""", 0, 10, 0)
+excessoes(f"""{ref[diAtual]["almoco"]}""", 0, 10, 0)
 try:
-    enviarRef(f"""{ref[diAtual]["jantar"]}""", 1)
+    enviarRef(f"""{ref[diAtual]["jantar"]}""", 1, 15, 0)
+    excessoes(f"""{ref[diAtual]["jantar"]}""", 1, 15, 5)
 
 #Domingo e feriados não tem janta
 except KeyError:
