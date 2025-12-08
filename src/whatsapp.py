@@ -1,6 +1,7 @@
 # codigo para enviar a mensagem formatada 
 
 import json
+import os
 from random import choice
 from datetime import date
 from urllib.parse import quote
@@ -10,24 +11,24 @@ from selenium.webdriver.common.by import By
 import pickle
 import time
 
-def create_msg(refeição: dict, classing: dict, msg_dict: dict, msg: str = ""):
+def create_msg(meal: dict, classification: dict, msg_dict: dict, msg: str = ""):
     """
-    refeição: dict -> Refeição do dia.
-    classing: dict -> Dicionário que classifica as refeições.
+    meal: dict -> Refeição do dia.
+    classification: dict -> Dicionário que classifica as refeições.
     msg_dict: dict -> Dicionário das mensagens.
     msg: str -> String adicionada no início de toda mensagem. 
     """
-    proteina = refeição["proteina"]["RU"]
-    guarnicao = refeição["guarnicao"]["RU"]
-    salada = refeição["salada"]["RU"]
-    sobremesa = refeição["sobremesa"]["RU"]
-    suco = refeição["suco"]["RU"]
+    proteina = meal["proteina"]
+    guarnicao = meal["guarnicao"]
+    salada = meal["salada"]
+    sobremesa = meal["sobremesa"]
+    suco = meal["suco"]
 
-    proteina_msg = choice(msg_dict[classing[proteina]])[:]
-    guarnicao_msg = choice(msg_dict[classing[guarnicao]])[:]
-    salada_msg = choice(msg_dict[classing[salada]])[:]
-    sobremesa_msg = choice(msg_dict[classing[sobremesa]])[:]
-    suco_msg = choice(msg_dict[classing[suco]])[:]
+    proteina_msg = choice(msg_dict[classification["proteina"]])[:]
+    guarnicao_msg = choice(msg_dict[classification["guarnicao"]])[:]
+    salada_msg = choice(msg_dict[classification["salada"]])[:]
+    sobremesa_msg = choice(msg_dict[classification["sobremesa"]])[:]
+    suco_msg = choice(msg_dict[classification["suco"]])[:]
 
     for i in range(len(proteina_msg)):
         if proteina_msg[i] == "_":
@@ -52,7 +53,7 @@ def create_msg(refeição: dict, classing: dict, msg_dict: dict, msg: str = ""):
     return quote(msg + proteina_msg + guarnicao_msg + salada_msg + sobremesa_msg + suco_msg)
 
 def send_msg(msg: str):
-    
+
     options = Options()
     options.add_argument("user-data-dir=C:\\Users\\Bernardo\\AppData\\Local\\Google\\Chrome\\User Data\\Default")
     driver = wb.Chrome(options=options)
@@ -104,8 +105,79 @@ def save_and_exit(driver):
     driver.close()
     exit()
 
+def get_quality(meal: dict, classification: dict):
+    quality = {
+        "proteina": "neutro"
+        "guarnicao": "neutro"
+        "salada": "neutro"
+        "sobremesa": "neutro"
+        "suco": "neutro"
+        }
+    
+    proteina = meal["proteina"]
+    guarnicao = meal["guarnicao"]
+    salada = meal["salada"]
+    sobremesa = meal["sobremesa"]
+    suco = meal["suco"]
+
+    proteina_simplificado = proteina.split()[0]
+    if proteina_simplificado in classification:
+        quality["proteina"] = classification[proteina_simplificado]
+
+    guarnicao_simplificado = guarnicao.split()[0]
+    if guarnicao_simplificado in classification:
+        quality["guarnicao"] = classification[guarnicao_simplificado]
+
+    salada_simplificado = salada.split()[0]
+    if salada_simplificado in classification:
+        quality["salada"] = classification[salada_simplificado]
+    
+    if sobremesa in classification:
+        quality["sobremesa"] = classification[sobremesa]
+    
+    suco_simplificado = suco.split()[2]
+    if suco_simplificado in classification:
+        quality["suco"] = classification[suco_simplificado]
 
 
+
+
+
+def send_lunch():
+    diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+    diretorio_raiz = os.path.dirname(diretorio_atual)
+    caminho_arquivo = os.path.join(diretorio_raiz, config.week_meals_file)
+
+    with open(caminho_arquivo, "r", encoding="utf-8") as file:
+        meal = json.load(file)[str(date.today())]["almoco"]["RU"]
+
+    caminho_arquivo = os.path.join(diretorio_raiz, config.msgs)
+    with open(caminho_arquivo, "r", encoding="utf-8") as file:
+        msgs = json.load(file)
+
+    quality = get_quality(meal)
+
+    msg = create_msg(meal, quality, msgs)
+    send_msg(msg)
+    return
+
+def send_dinner():
+    diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+    diretorio_raiz = os.path.dirname(diretorio_atual)
+    caminho_arquivo = os.path.join(diretorio_raiz, config.week_meals_file)
+
+    with open(caminho_arquivo, "r", encoding="utf-8") as file:
+        meal = json.load(file)[str(date.today())]["jantar"]["RU"]
+
+    caminho_arquivo = os.path.join(diretorio_raiz, config.msgs)
+    with open(caminho_arquivo, "r", encoding="utf-8") as file:
+        msgs = json.load(file)
+
+    quality = get_quality(meal)
+
+    msg = create_msg(meal, quality, msgs)
+    send_msg(msg)
+    return
 
 
 
