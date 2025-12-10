@@ -8,6 +8,7 @@ import os
 @dataclass
 class Config:
     week_meals_file: str = 'weekly-data.json'
+    msgs: str = 'msgs.json'
     config_file: str = 'config.ini'
     url_cardapio: str = 'https://sistemas.prefeitura.unicamp.br/apps/cardapio/index.php'
 
