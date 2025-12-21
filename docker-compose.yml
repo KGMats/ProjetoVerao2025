@@ -1,0 +1,9 @@
+services:
+  chatbot:
+    container_name: chatbot-rivis
+    build: .
+    restart: always
+    shm_size: 2gb
+    environment:
+      - TZ=America/Sao_Paulo
+

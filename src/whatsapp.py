@@ -463,6 +463,7 @@ def send():
         quality = get_quality(meal, classification)
         msg_final = create_msg(meal, quality, msgs)
         
+        print(f"[INFO] {datetime.now().isoformat()} Sending message: {msg_final}")
         send_msg(msg_final)
 
     except Exception as e:

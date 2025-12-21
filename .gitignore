@@ -1,7 +1,4 @@
-#gitignore model based on my extension project
 __pycache__/
-docker-compose.yml
-Dockerfile
 .venv/
 .idea/
 .env

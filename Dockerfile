@@ -12,8 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
-COPY . .
+# Copiando os arquivos do codigo fonte
+COPY perso_messages.json .
+COPY relationships.json .
+COPY src src/
+COPY main.py .
+
 CMD ["python", "main.py"]
