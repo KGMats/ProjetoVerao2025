@@ -18,7 +18,9 @@ from pyzbar.pyzbar import decode
 import qrcode
 from io import BytesIO
 from selenium.webdriver.common.keys import Keys
+import logging
 
+logger = logging.getLogger(__name__)
 
 def get_quality(meal: dict, classification: dict):
     quality = {
@@ -211,7 +213,7 @@ def print_terminal_qr(driver):
     try:
         reload_targets = driver.find_elements(By.XPATH, "//button[contains(., 'Recarregar')] | //div[@role='button'][contains(., 'Reload')] | //span[@data-icon='refresh']")
         if reload_targets:
-            print("DEBUG: Botão 'Recarregar' detectado. Clicando...")
+            logger.debug("Botão 'Recarregar' detectado. Clicando...")
             driver.execute_script("arguments[0].click();", reload_targets[0])
             time.sleep(3)
             return None
@@ -261,14 +263,15 @@ def print_terminal_qr(driver):
 
 
 def send_msg_via_url(driver, msg: str, group_name: str):
-    print("DEBUG: Iniciando send_msg_via_url...")
+    logger.info("Iniciando o fluxo de envio da mensagem...")
     wait = WebDriverWait(driver, 30)
 
     encoded_msg = quote(msg)
     url = f"https://web.whatsapp.com/send?text={encoded_msg}"
     driver.get(url)
 
-    print("DEBUG: Aguardando caixa de pesquisa do modal...")
+    logger.info(f"Enviando mensagem para o grupo '{group_name}'...")
+    logger.debug("Aguardando caixa de pesquisa do modal...")
     try:
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         modal_search_xpath = "//div[@role='dialog']//div[@contenteditable='true']"
@@ -278,10 +281,10 @@ def send_msg_via_url(driver, msg: str, group_name: str):
         search_box.send_keys(group_name)
         time.sleep(3)
     except Exception as e:
-        print(f"DEBUG: Falha ao focar na busca do modal. Erro: {e}")
+        logger.error("Falha ao focar na busca do modal. Erro: {e}")
         raise e
 
-    print(f"DEBUG: Selecionando grupo '{group_name}'...")
+    logger.info(f"Mensagem a ser enviada: \n{msg}")
     try:
         xpath_group = f"//div[@role='dialog']//span[@title='{group_name}']"
         group_element = wait.until(EC.presence_of_element_located((By.XPATH, xpath_group)))
@@ -291,23 +294,23 @@ def send_msg_via_url(driver, msg: str, group_name: str):
         except:
             driver.execute_script("arguments[0].click();", group_element)
     except Exception as e:
-        raise Exception(f"DEBUG: Grupo não encontrado. {e}")
+        raise Exception(f"Grupo não encontrado. {e}")
 
     time.sleep(2)
 
-    print("DEBUG: Clicando no botão do modal (Encaminhar)...")
+    logger.debug("Clicando no botão do modal (Encaminhar)...")
     modal_btn_xpath = '//div[@role="dialog"]//span[@data-icon="wds-ic-send-filled"]/ancestor::div[@role="button"] | //div[@role="dialog"]//span[@data-icon="send"]/ancestor::div[@role="button"]'
     try:
         send_btn_modal = wait.until(EC.presence_of_element_located((By.XPATH, modal_btn_xpath)))
         driver.execute_script("arguments[0].click();", send_btn_modal)
     except Exception as e:
-        print(f"DEBUG: Erro botão modal ({e}). Tentando ENTER...")
+        logger.error("Erro botão modal ({e}). Tentando ENTER...")
         search_box.send_keys(Keys.ENTER)
 
-    print("DEBUG: Aguardando carregamento do chat principal (10s)...")
+    logger.debug("Aguardando carregamento do chat principal (10s)...")
     time.sleep(10)
 
-    print("DEBUG: Escaneando rodapé em busca do botão de envio final...")
+    logger.debug("Escaneando rodapé em busca do botão de envio final...")
     try:
         footer = wait.until(EC.presence_of_element_located((By.TAG_NAME, "footer")))
         buttons = footer.find_elements(By.XPATH, ".//button | .//div[@role='button']")
@@ -317,26 +320,27 @@ def send_msg_via_url(driver, msg: str, group_name: str):
             html = btn.get_attribute('outerHTML')
             if 'data-icon="send"' in html or 'data-icon="wds-ic-send-filled"' in html or 'aria-label="Send"' in html or 'aria-label="Enviar"' in html:
                 target_btn = btn
-                print(f"DEBUG: Botão encontrado por análise de HTML!")
+                logger.debug("Botão encontrado por análise de HTML!")
                 break
 
         if target_btn:
             driver.execute_script("arguments[0].click();", target_btn)
-            print("DEBUG: CLIQUE REALIZADO NO BOTÃO ENCONTRADO.")
+            logger.debug("CLIQUE REALIZADO NO BOTÃO ENCONTRADO.")
         else:
-            print("DEBUG: Botão não encontrado. Tentando ENTER no input.")
+            logger.debug("Botão não encontrado. Tentando ENTER no input.")
             inp = footer.find_element(By.XPATH, ".//div[@contenteditable='true']")
             inp.send_keys(Keys.ENTER)
 
     except Exception as e:
-        print(f"DEBUG: Erro na etapa final: {e}")
+        logger.error("Erro na etapa final: {e}.")
         driver.save_screenshot("debug_final_step_error.png")
 
-    print("DEBUG: Aguardando 5 minutos para garantir envio...")
+    logger.info("Processando envio da mensagem...")
+    logger.debug("Aguardando 5 minutos para garantir envio...")
     driver.save_screenshot("debug_final_step.png")
     time.sleep(5 * 60)
     driver.save_screenshot("debug_final_step_after.png")
-    print("DEBUG: Fluxo finalizado.")
+    logger.info("Fluxo finalizado.")
 
 
 def send_msg(msg: str):
@@ -366,12 +370,12 @@ def send_msg(msg: str):
 
     service = Service("/usr/bin/chromedriver")
 
-    print("DEBUG: Inicializando driver...")
+    logger.debug("Inicializando driver...")
     driver = wb.Chrome(service=service, options=options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     try:
-        print("DEBUG: Abrindo WhatsApp Web...")
+        logger.debug("Abrindo WhatsApp Web...")
         driver.get("https://web.whatsapp.com/")
 
         logged_in = False
@@ -379,12 +383,12 @@ def send_msg(msg: str):
         attempts = 0
         max_attempts = 90
 
-        print("DEBUG: Aguardando Login ou QR Code...")
+        logger.info("Aguardando Login ou QR Code...")
         
         while not logged_in and attempts < max_attempts:
             try:
                 driver.find_element(By.ID, "side")
-                print("\nDEBUG: LOGIN REALIZADO COM SUCESSO!")
+                logger.info("LOGIN REALIZADO COM SUCESSO!")
                 logged_in = True
                 break
             except:
@@ -400,7 +404,7 @@ def send_msg(msg: str):
                 else:
                     # SE NÃO TEM QR CODE E NÃO TEM LOGIN (SIDE)
                     # Significa que está na tela de "Sincronizando mensagens..."
-                    print(f"DEBUG: Processando login/Sincronizando... ({attempts}/{max_attempts})", end='\r')
+                    logger.debug("Processando login/Sincronizando... ({attempts}/{max_attempts})\r")
                     
             except:
                 pass
@@ -411,28 +415,30 @@ def send_msg(msg: str):
         print("") # Quebra de linha após o loop
 
         if not logged_in:
-            print("ERRO: Tempo limite excedido na sincronização.")
+            logger.error("ERRO: Tempo limite excedido na sincronização.")
             driver.save_screenshot("debug_timeout_sync.png")
             return
 
         # Pós-Login
-        print("DEBUG: Aguardando carregamento das conversas (15s)...")
+        logger.debug("Aguardando carregamento das conversas (15s)...")
         time.sleep(15) 
 
         try:
+            logger.debug("Salvando os cookies")
             pickle.dump(driver.get_cookies(), open('.cookies.pkl', 'wb'))
         except:
+            logger.error("Falha ao salvar os cookies em .cookies.pkl")
             pass
 
-        print("DEBUG: Enviando mensagem...")
-        send_msg_via_url(driver, msg, "TCN")
+        logger.info("Enviando mensagem...")
+        send_msg_via_url(driver, msg, config.group_name)
 
     except Exception as e:
-        print(f"Erro Fatal (Main): {e}")
+        logger.error(f"Erro Fatal (Main): {e}")
         driver.save_screenshot("debug_fatal_error.png")
     finally:
         driver.quit()
-        print("DEBUG: Driver encerrado.")
+        logger.debug("Driver encerrado.")
 
 def send():
     # Verifica o dia/hora e carrega refeição
